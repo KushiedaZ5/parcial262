@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: plataforma-incidencias
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    region: oregon
+    disk:
+      name: incidencias_sqlite_data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        value: DataSource=/data/app.db;Cache=Shared
+      - key: Algolia__ApplicationId
+        sync: false
+      - key: Algolia__ApiKey
+        sync: false
+      - key: Algolia__IndexName
+        value: incidencias
+      - key: Redis__ConnectionString
+        sync: false
+      - key: PieHost__ClusterId
+        value: free.piehost.com
+      - key: PieHost__ChannelId
+        value: incidencias
+      - key: PieHost__ApiKey
+        sync: false
+      - key: PieHost__SecretKey
+        sync: false

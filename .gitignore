@@ -1,0 +1,17 @@
+## .NET Core
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+.vscode/
+
+## SQLite & DBs
+app.db-shm
+app.db-wal
+
+## Logs & Temp
+*.log
+.DS_Store
+Thumbs.db

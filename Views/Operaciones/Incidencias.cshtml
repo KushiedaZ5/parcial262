@@ -1,0 +1,71 @@
+@model IEnumerable<PlataformaIncidencias.Models.Incidencia>
+@{
+    ViewData["Title"] = "Incidencias Abiertas";
+}
+
+<div class="row mb-3">
+    <div class="col-md-8">
+        <h1>Incidencias abiertas</h1>
+        <p class="text-muted">Gestión y control de averías en tiempo de operaciones para bicicletas compartidas.</p>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tablaIncidencias">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 80px;">#ID</th>
+                        <th>Estación</th>
+                        <th>Descripción</th>
+                        <th style="width: 120px;">Prioridad</th>
+                        <th style="width: 120px;">Estado</th>
+                        <th>Registrado</th>
+                        <th style="width: 150px;" class="text-center">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="listaIncidenciasBody">
+                @if (!Model.Any())
+                {
+                    <tr id="filaSinDatos">
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <i class="bi bi-check-circle text-success fs-3 d-block mb-2"></i>
+                            No hay incidencias abiertas en este momento.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model)
+                    {
+                        var badgeClass = item.Prioridad switch
+                        {
+                            "Alta" => "badge-alta text-white",
+                            "Media" => "badge-media",
+                            _ => "badge-baja"
+                        };
+
+                        <tr id="incidencia-row-@item.Id">
+                            <td class="fw-bold text-secondary">#@item.Id</td>
+                            <td><i class="bi bi-geo-alt-fill text-danger me-1"></i><strong>@item.Estacion</strong></td>
+                            <td>@item.Descripcion</td>
+                            <td><span class="badge @badgeClass">@item.Prioridad</span></td>
+                            <td><span class="badge bg-success">@item.Estado</span></td>
+                            <td><small class="text-muted">@item.FechaRegistro.ToString("yyyy-MM-dd HH:mm")</small></td>
+                            <td class="text-center">
+                                <form asp-action="Cerrar" asp-route-id="@item.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Confirmar cierre de la incidencia #@item.Id?');">
+                                        <i class="bi bi-x-circle me-1"></i>Cerrar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
