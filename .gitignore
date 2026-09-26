@@ -8,6 +8,7 @@ obj/
 .vscode/
 
 ## SQLite & DBs
+app.db
 app.db-shm
 app.db-wal
 
