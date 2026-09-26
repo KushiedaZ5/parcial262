@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PlataformaIncidencias.Data;
+using PlataformaIncidencias.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,9 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 // 3. MVC y Razor Pages (Identity)
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
+
+// 4. Servicio de Publicación WebSocket con PieHost
+builder.Services.AddHttpClient<IPieHostService, PieHostService>();
 
 var app = builder.Build();
 

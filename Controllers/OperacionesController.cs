@@ -2,17 +2,26 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PlataformaIncidencias.Data;
 using PlataformaIncidencias.Models;
+using PlataformaIncidencias.Services;
 
 namespace PlataformaIncidencias.Controllers;
 
 public class OperacionesController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly IPieHostService _pieHostService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<OperacionesController> _logger;
 
-    public OperacionesController(ApplicationDbContext context, ILogger<OperacionesController> logger)
+    public OperacionesController(
+        ApplicationDbContext context,
+        IPieHostService pieHostService,
+        IConfiguration configuration,
+        ILogger<OperacionesController> logger)
     {
         _context = context;
+        _pieHostService = pieHostService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -29,6 +38,10 @@ public class OperacionesController : Controller
             ViewBag.Busqueda = q;
         }
 
+        ViewBag.PieHostCluster = _configuration["PieHost:ClusterId"] ?? _configuration["PieHost__ClusterId"] ?? "free.piehost.com";
+        ViewBag.PieHostChannel = _configuration["PieHost:ChannelId"] ?? _configuration["PieHost__ChannelId"] ?? "incidencias";
+        ViewBag.PieHostApiKey = _configuration["PieHost:ApiKey"] ?? _configuration["PieHost__ApiKey"] ?? "";
+
         var lista = await query.OrderByDescending(i => i.FechaRegistro).ToListAsync();
         return View(lista);
     }
@@ -44,12 +57,22 @@ public class OperacionesController : Controller
             return NotFound();
         }
 
+        // 1. Guardar primero el estado en la base de datos
         incidencia.Estado = "Cerrada";
         incidencia.FechaCierre = DateTime.UtcNow;
         incidencia.CerradoPor = User.Identity?.Name ?? "supervisor@bicicletas.com";
 
         await _context.SaveChangesAsync();
-        _logger.LogInformation("Incidencia {Id} cerrada satisfactoriamente en la base de datos.", id);
+        _logger.LogInformation("Incidencia {Id} cerrada y persistida en base de datos.", id);
+
+        // 2. Publicar desde el servidor el evento IncidenciaActualizada con Id y Estado en PieHost
+        await _pieHostService.PublicarIncidenciaActualizadaAsync(id, "Cerrada");
+        _logger.LogInformation("[PIEHOST PUBLICACIÓN] Evento IncidenciaActualizada emitido: Id={Id}, Estado=Cerrada", id);
+
+        if (Request.Headers.Accept.ToString().Contains("application/json"))
+        {
+            return Json(new { success = true, id = id, estado = "Cerrada" });
+        }
 
         return RedirectToAction(nameof(Incidencias));
     }
