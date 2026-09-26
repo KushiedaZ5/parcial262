@@ -11,29 +11,40 @@ public class OperacionesController : Controller
     private readonly ApplicationDbContext _context;
     private readonly IIncidenciaCacheService _cacheService;
     private readonly IAlgoliaSearchService _algoliaSearchService;
+    private readonly IPieHostService _pieHostService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<OperacionesController> _logger;
 
     public OperacionesController(
         ApplicationDbContext context,
         IIncidenciaCacheService cacheService,
         IAlgoliaSearchService algoliaSearchService,
+        IPieHostService pieHostService,
+        IConfiguration configuration,
         ILogger<OperacionesController> logger)
     {
         _context = context;
         _cacheService = cacheService;
         _algoliaSearchService = algoliaSearchService;
+        _pieHostService = pieHostService;
+        _configuration = configuration;
         _logger = logger;
     }
 
     // GET: /Operaciones/Incidencias
     public async Task<IActionResult> Incidencias(string? q)
     {
+        ViewBag.PieHostCluster = _configuration["PieHost:ClusterId"] ?? _configuration["PieHost__ClusterId"] ?? "free.piehost.com";
+        ViewBag.PieHostChannel = _configuration["PieHost:ChannelId"] ?? _configuration["PieHost__ChannelId"] ?? "incidencias";
+        ViewBag.PieHostApiKey = _configuration["PieHost:ApiKey"] ?? _configuration["PieHost__ApiKey"] ?? "";
+
         // 1. Si existe búsqueda por texto, se consulta Algolia directamente en servidor (sin usar caché de Redis)
         if (!string.IsNullOrWhiteSpace(q))
         {
             _logger.LogInformation("[ALGOLIA SEARCH] Búsqueda con texto '{Termino}' ejecutada en servidor (sin caché Redis).", q);
             var algoliaIds = await _algoliaSearchService.BuscarIncidenciaIdsAsync(q);
 
+            // Filtro estricto: Solo incidencias abiertas existentes en base de datos
             var resultados = await _context.Incidencias
                 .Where(i => i.Estado == "Abierta" && algoliaIds.Contains(i.Id))
                 .OrderByDescending(i => i.FechaRegistro)
@@ -79,16 +90,27 @@ public class OperacionesController : Controller
             return NotFound();
         }
 
+        // SECUENCIA REQUERIDA POR EL EXAMEN:
+        // 1. Cierre y persistencia en base de datos
         incidencia.Estado = "Cerrada";
         incidencia.FechaCierre = DateTime.UtcNow;
         incidencia.CerradoPor = User.Identity?.Name ?? "supervisor@bicicletas.com";
 
         await _context.SaveChangesAsync();
-        _logger.LogInformation("Incidencia {Id} cerrada satisfactoriamente en base de datos.", id);
+        _logger.LogInformation("[SECUENCIA 1/3] Incidencia {Id} cerrada y persistida en base de datos SQLite.", id);
 
-        // Invalidar inmediatamente la clave de Redis antes de volver a consultarlo
+        // 2. Invalidación de Redis antes de cualquier nueva consulta
         await _cacheService.InvalidateCacheAsync();
-        _logger.LogInformation("[REDIS INVALIDATION] Clave de listado general invalidada en Redis tras cierre.");
+        _logger.LogInformation("[SECUENCIA 2/3] Clave de listado general invalidada en Redis.");
+
+        // 3. Publicación por PieHost del evento IncidenciaActualizada
+        await _pieHostService.PublicarIncidenciaActualizadaAsync(id, "Cerrada");
+        _logger.LogInformation("[SECUENCIA 3/3] Evento IncidenciaActualizada emitido por PieHost con Id={Id} y Estado=Cerrada.", id);
+
+        if (Request.Headers.Accept.ToString().Contains("application/json"))
+        {
+            return Json(new { success = true, id = id, estado = "Cerrada" });
+        }
 
         return RedirectToAction(nameof(Incidencias));
     }

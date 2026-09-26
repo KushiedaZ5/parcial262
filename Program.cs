@@ -57,6 +57,9 @@ builder.Services.AddScoped<IIncidenciaCacheService, IncidenciaCacheService>();
 // 5. Servicio de búsqueda en Algolia
 builder.Services.AddHttpClient<IAlgoliaSearchService, AlgoliaSearchService>();
 
+// 6. Servicio de Publicación WebSocket con PieHost
+builder.Services.AddHttpClient<IPieHostService, PieHostService>();
+
 var app = builder.Build();
 
 // 4. Inicialización y Seed de Base de Datos
