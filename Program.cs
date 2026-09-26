@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PlataformaIncidencias.Data;
+using PlataformaIncidencias.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,26 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 // 3. MVC y Razor Pages (Identity)
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
+
+// 4. Configuración de Caché con Redis (StackExchange.Redis)
+var redisConnectionString = builder.Configuration["Redis:ConnectionString"]
+    ?? builder.Configuration["Redis__ConnectionString"]
+    ?? Environment.GetEnvironmentVariable("Redis__ConnectionString");
+
+if (!string.IsNullOrWhiteSpace(redisConnectionString))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = "BiciShared:";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
+
+builder.Services.AddScoped<IIncidenciaCacheService, IncidenciaCacheService>();
 
 var app = builder.Build();
 

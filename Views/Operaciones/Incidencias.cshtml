@@ -3,10 +3,21 @@
     ViewData["Title"] = "Incidencias Abiertas";
 }
 
-<div class="row mb-3">
-    <div class="col-md-8">
-        <h1>Incidencias abiertas</h1>
-        <p class="text-muted">Gestión y control de averías en tiempo de operaciones para bicicletas compartidas.</p>
+<div class="row mb-3 align-items-center">
+    <div class="col-md-7">
+        <h1>Incidencias abiertas con consulta rápida</h1>
+        <p class="text-muted mb-0">Listado optimizado en caché de alto rendimiento con Redis (TTL de 60 segundos).</p>
+    </div>
+    <div class="col-md-5 text-end">
+        @if (ViewBag.FuenteDatos != null)
+        {
+            <div class="p-2 border rounded bg-white shadow-sm d-inline-block">
+                <small class="text-muted d-block">Origen de datos:</small>
+                <span class="badge @(ViewBag.FuenteDatos.ToString().Contains("HIT") ? "bg-success" : "bg-primary") fs-6">
+                    <i class="bi @(ViewBag.FuenteDatos.ToString().Contains("HIT") ? "bi-lightning-fill" : "bi-database-fill") me-1"></i>@ViewBag.FuenteDatos
+                </span>
+            </div>
+        }
     </div>
 </div>
 
