@@ -7,8 +7,8 @@ Sistema web para la gestión operativa y control de incidencias en estaciones de
 ## 📌 Enlaces Principales de Entrega
 
 - **Repositorio en GitHub:** [https://github.com/KushiedaZ5/parcial262](https://github.com/KushiedaZ5/parcial262)
-- **URL de Producción (Render):** `https://parcial262.onrender.com` (o el servicio web asignado en Render)
-- **Commit Desplegado en Producción:** `65a2488` (Merge pull request #3 from feature/websocket-piehost)
+- **URL de Producción (Render):** [https://parcial262.onrender.com](https://parcial262.onrender.com)
+- **Commit Desplegado en Producción:** `65a2488` / `23aa39c` (Merge PR #3 + Documentación final)
 
 ---
 
