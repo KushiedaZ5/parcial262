@@ -3,10 +3,23 @@
     ViewData["Title"] = "Incidencias Abiertas";
 }
 
-<div class="row mb-3">
-    <div class="col-md-8">
-        <h1>Incidencias abiertas</h1>
-        <p class="text-muted">Gestión y control de averías en tiempo de operaciones para bicicletas compartidas.</p>
+<div class="row mb-3 align-items-center">
+    <div class="col-md-7">
+        <h1>Incidencias abiertas encontradas</h1>
+        <p class="text-muted mb-2">Búsqueda rápida en Algolia por nombre de estación o descripción con filtrado en base de datos.</p>
+    </div>
+    <div class="col-md-5">
+        <form method="get" asp-action="Incidencias" class="d-flex gap-2">
+            <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-search text-primary"></i></span>
+                <input type="text" name="q" value="@ViewBag.Busqueda" class="form-control" placeholder="Buscar con Algolia..." />
+                <button type="submit" class="btn btn-primary">Buscar</button>
+                @if (!string.IsNullOrEmpty(ViewBag.Busqueda as string))
+                {
+                    <a asp-action="Incidencias" class="btn btn-outline-secondary">Limpiar</a>
+                }
+            </div>
+        </form>
     </div>
 </div>
 

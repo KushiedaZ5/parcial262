@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PlataformaIncidencias.Data;
+using PlataformaIncidencias.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 // 1. Configuración de Base de Datos SQLite (EF Core)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -31,6 +33,9 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 // 3. MVC y Razor Pages (Identity)
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
+
+// Servicio de búsqueda en Algolia
+builder.Services.AddHttpClient<IAlgoliaSearchService, AlgoliaSearchService>();
 
 var app = builder.Build();
 
