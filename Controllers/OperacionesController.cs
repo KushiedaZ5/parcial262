@@ -2,31 +2,41 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PlataformaIncidencias.Data;
 using PlataformaIncidencias.Models;
+using PlataformaIncidencias.Services;
 
 namespace PlataformaIncidencias.Controllers;
 
 public class OperacionesController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly IAlgoliaSearchService _algoliaSearchService;
     private readonly ILogger<OperacionesController> _logger;
 
-    public OperacionesController(ApplicationDbContext context, ILogger<OperacionesController> logger)
+    public OperacionesController(
+        ApplicationDbContext context,
+        IAlgoliaSearchService algoliaSearchService,
+        ILogger<OperacionesController> logger)
     {
         _context = context;
+        _algoliaSearchService = algoliaSearchService;
         _logger = logger;
     }
 
     // GET: /Operaciones/Incidencias
     public async Task<IActionResult> Incidencias(string? q)
     {
-        _logger.LogInformation("Consultando listado de incidencias abiertas desde la base de datos.");
-        
-        var query = _context.Incidencias.Where(i => i.Estado == "Abierta");
+        IQueryable<Incidencia> query = _context.Incidencias.Where(i => i.Estado == "Abierta");
 
         if (!string.IsNullOrWhiteSpace(q))
         {
-            query = query.Where(i => i.Estacion.Contains(q) || i.Descripcion.Contains(q));
+            _logger.LogInformation("Ejecutando búsqueda con Algolia en servidor para término '{Termino}'...", q);
+            var algoliaIds = await _algoliaSearchService.BuscarIncidenciaIdsAsync(q);
+            query = query.Where(i => algoliaIds.Contains(i.Id));
             ViewBag.Busqueda = q;
+        }
+        else
+        {
+            _logger.LogInformation("Consulta general de incidencias abiertas sin filtro de búsqueda.");
         }
 
         var lista = await query.OrderByDescending(i => i.FechaRegistro).ToListAsync();
