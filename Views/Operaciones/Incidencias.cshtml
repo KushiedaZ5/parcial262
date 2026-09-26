@@ -5,13 +5,32 @@
 
 <div class="row mb-3 align-items-center">
     <div class="col-md-7">
-        <h1>Incidencias abiertas en tiempo real</h1>
-        <p class="text-muted mb-0">Monitoreo y actualización instantánea de incidencias mediante WebSockets con PieHost.</p>
+        <h1>Incidencias abiertas encontradas con consulta rápida en tiempo real</h1>
+        <p class="text-muted mb-0">Búsqueda con Algolia en servidor, caché Redis (TTL 60s) y WebSockets con PieHost.</p>
     </div>
-    <div class="col-md-5 text-end">
-        <span id="wsStatusBadge" class="badge bg-warning text-dark fs-6 py-2 px-3 shadow-sm">
-            <i class="bi bi-broadcast me-1"></i><span id="wsStatusText">WebSocket: Conectando...</span>
-        </span>
+    <div class="col-md-5">
+        <form method="get" asp-action="Incidencias" class="d-flex gap-2 justify-content-end mb-2">
+            <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-search text-primary"></i></span>
+                <input type="text" name="q" value="@ViewBag.Busqueda" class="form-control" placeholder="Buscar con Algolia..." />
+                <button type="submit" class="btn btn-primary">Buscar</button>
+                @if (!string.IsNullOrEmpty(ViewBag.Busqueda as string))
+                {
+                    <a asp-action="Incidencias" class="btn btn-outline-secondary">Limpiar</a>
+                }
+            </div>
+        </form>
+        <div class="d-flex gap-2 justify-content-end align-items-center">
+            @if (ViewBag.FuenteDatos != null)
+            {
+                <span class="badge @(ViewBag.FuenteDatos.ToString().Contains("HIT") ? "bg-success" : (ViewBag.FuenteDatos.ToString().Contains("Algolia") ? "bg-info text-dark" : "bg-primary")) fs-6 shadow-sm">
+                    <i class="bi @(ViewBag.FuenteDatos.ToString().Contains("HIT") ? "bi-lightning-fill" : (ViewBag.FuenteDatos.ToString().Contains("Algolia") ? "bi-search" : "bi-database-fill")) me-1"></i>@ViewBag.FuenteDatos
+                </span>
+            }
+            <span id="wsStatusBadge" class="badge bg-warning text-dark fs-6 shadow-sm">
+                <i class="bi bi-broadcast me-1"></i><span id="wsStatusText">WebSocket: Conectando...</span>
+            </span>
+        </div>
     </div>
 </div>
 

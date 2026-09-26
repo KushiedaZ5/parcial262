@@ -5,6 +5,7 @@ using PlataformaIncidencias.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
 // 1. Configuración de Base de Datos SQLite (EF Core)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
@@ -33,7 +34,30 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
-// 4. Servicio de Publicación WebSocket con PieHost
+// 4. Configuración de Caché con Redis (StackExchange.Redis)
+var redisConnectionString = builder.Configuration["Redis:ConnectionString"]
+    ?? builder.Configuration["Redis__ConnectionString"]
+    ?? Environment.GetEnvironmentVariable("Redis__ConnectionString");
+
+if (!string.IsNullOrWhiteSpace(redisConnectionString))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = "BiciShared:";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
+
+builder.Services.AddScoped<IIncidenciaCacheService, IncidenciaCacheService>();
+
+// 5. Servicio de búsqueda en Algolia
+builder.Services.AddHttpClient<IAlgoliaSearchService, AlgoliaSearchService>();
+
+// 6. Servicio de Publicación WebSocket con PieHost
 builder.Services.AddHttpClient<IPieHostService, PieHostService>();
 
 var app = builder.Build();
