@@ -5,6 +5,7 @@ using PlataformaIncidencias.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
 // 1. Configuración de Base de Datos SQLite (EF Core)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
@@ -52,6 +53,9 @@ else
 }
 
 builder.Services.AddScoped<IIncidenciaCacheService, IncidenciaCacheService>();
+
+// 5. Servicio de búsqueda en Algolia
+builder.Services.AddHttpClient<IAlgoliaSearchService, AlgoliaSearchService>();
 
 var app = builder.Build();
 

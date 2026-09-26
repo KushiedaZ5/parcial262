@@ -5,16 +5,26 @@
 
 <div class="row mb-3 align-items-center">
     <div class="col-md-7">
-        <h1>Incidencias abiertas con consulta rápida</h1>
-        <p class="text-muted mb-0">Listado optimizado en caché de alto rendimiento con Redis (TTL de 60 segundos).</p>
+        <h1>Incidencias abiertas encontradas con consulta rápida</h1>
+        <p class="text-muted mb-0">Búsqueda con Algolia en servidor y listado optimizado con caché Redis (TTL 60s).</p>
     </div>
-    <div class="col-md-5 text-end">
+    <div class="col-md-5">
+        <form method="get" asp-action="Incidencias" class="d-flex gap-2 justify-content-end mb-2">
+            <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-search text-primary"></i></span>
+                <input type="text" name="q" value="@ViewBag.Busqueda" class="form-control" placeholder="Buscar con Algolia..." />
+                <button type="submit" class="btn btn-primary">Buscar</button>
+                @if (!string.IsNullOrEmpty(ViewBag.Busqueda as string))
+                {
+                    <a asp-action="Incidencias" class="btn btn-outline-secondary">Limpiar</a>
+                }
+            </div>
+        </form>
         @if (ViewBag.FuenteDatos != null)
         {
-            <div class="p-2 border rounded bg-white shadow-sm d-inline-block">
-                <small class="text-muted d-block">Origen de datos:</small>
-                <span class="badge @(ViewBag.FuenteDatos.ToString().Contains("HIT") ? "bg-success" : "bg-primary") fs-6">
-                    <i class="bi @(ViewBag.FuenteDatos.ToString().Contains("HIT") ? "bi-lightning-fill" : "bi-database-fill") me-1"></i>@ViewBag.FuenteDatos
+            <div class="text-end">
+                <span class="badge @(ViewBag.FuenteDatos.ToString().Contains("HIT") ? "bg-success" : (ViewBag.FuenteDatos.ToString().Contains("Algolia") ? "bg-info text-dark" : "bg-primary")) fs-6 shadow-sm">
+                    <i class="bi @(ViewBag.FuenteDatos.ToString().Contains("HIT") ? "bi-lightning-fill" : (ViewBag.FuenteDatos.ToString().Contains("Algolia") ? "bi-search" : "bi-database-fill")) me-1"></i>@ViewBag.FuenteDatos
                 </span>
             </div>
         }
