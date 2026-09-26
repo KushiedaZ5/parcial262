@@ -9,15 +9,18 @@ namespace PlataformaIncidencias.Controllers;
 public class OperacionesController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly IIncidenciaCacheService _cacheService;
     private readonly IAlgoliaSearchService _algoliaSearchService;
     private readonly ILogger<OperacionesController> _logger;
 
     public OperacionesController(
         ApplicationDbContext context,
+        IIncidenciaCacheService cacheService,
         IAlgoliaSearchService algoliaSearchService,
         ILogger<OperacionesController> logger)
     {
         _context = context;
+        _cacheService = cacheService;
         _algoliaSearchService = algoliaSearchService;
         _logger = logger;
     }
@@ -25,22 +28,44 @@ public class OperacionesController : Controller
     // GET: /Operaciones/Incidencias
     public async Task<IActionResult> Incidencias(string? q)
     {
-        IQueryable<Incidencia> query = _context.Incidencias.Where(i => i.Estado == "Abierta");
-
+        // 1. Si existe búsqueda por texto, se consulta Algolia directamente en servidor (sin usar caché de Redis)
         if (!string.IsNullOrWhiteSpace(q))
         {
-            _logger.LogInformation("Ejecutando búsqueda con Algolia en servidor para término '{Termino}'...", q);
+            _logger.LogInformation("[ALGOLIA SEARCH] Búsqueda con texto '{Termino}' ejecutada en servidor (sin caché Redis).", q);
             var algoliaIds = await _algoliaSearchService.BuscarIncidenciaIdsAsync(q);
-            query = query.Where(i => algoliaIds.Contains(i.Id));
+
+            var resultados = await _context.Incidencias
+                .Where(i => i.Estado == "Abierta" && algoliaIds.Contains(i.Id))
+                .OrderByDescending(i => i.FechaRegistro)
+                .ToListAsync();
+
             ViewBag.Busqueda = q;
-        }
-        else
-        {
-            _logger.LogInformation("Consulta general de incidencias abiertas sin filtro de búsqueda.");
+            ViewBag.FuenteDatos = "Algolia Search (Directa sin caché Redis)";
+            return View(resultados);
         }
 
-        var lista = await query.OrderByDescending(i => i.FechaRegistro).ToListAsync();
-        return View(lista);
+        _logger.LogInformation("Consulta general de incidencias abiertas sin filtro de texto.");
+
+        // 2. Para listado general sin búsqueda, consultar primero la caché de Redis (TTL 60s)
+        var incidenciasEnCache = await _cacheService.GetCachedIncidenciasAsync();
+        if (incidenciasEnCache != null)
+        {
+            _logger.LogInformation("[REDIS LECTURA: HIT] Listado general obtenido de Redis exitosamente.");
+            ViewBag.FuenteDatos = "Redis (Caché HIT 60s)";
+            return View(incidenciasEnCache);
+        }
+
+        // 3. Cache Miss: Consultar la base de datos SQLite y almacenar en Redis por 60s
+        _logger.LogInformation("[REDIS LECTURA: MISS] Listado general leído desde SQLite y guardado en Redis.");
+        var listaDesdeDb = await _context.Incidencias
+            .Where(i => i.Estado == "Abierta")
+            .OrderByDescending(i => i.FechaRegistro)
+            .ToListAsync();
+
+        await _cacheService.SetCachedIncidenciasAsync(listaDesdeDb, TimeSpan.FromSeconds(60));
+        ViewBag.FuenteDatos = "SQLite Base de Datos (Almacenado en Redis 60s)";
+
+        return View(listaDesdeDb);
     }
 
     // POST: /Operaciones/Cerrar/5
@@ -59,7 +84,11 @@ public class OperacionesController : Controller
         incidencia.CerradoPor = User.Identity?.Name ?? "supervisor@bicicletas.com";
 
         await _context.SaveChangesAsync();
-        _logger.LogInformation("Incidencia {Id} cerrada satisfactoriamente en la base de datos.", id);
+        _logger.LogInformation("Incidencia {Id} cerrada satisfactoriamente en base de datos.", id);
+
+        // Invalidar inmediatamente la clave de Redis antes de volver a consultarlo
+        await _cacheService.InvalidateCacheAsync();
+        _logger.LogInformation("[REDIS INVALIDATION] Clave de listado general invalidada en Redis tras cierre.");
 
         return RedirectToAction(nameof(Incidencias));
     }
